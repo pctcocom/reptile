@@ -1,91 +1,56 @@
 <?php
 namespace Pctco\Reptile;
-use app\model\ReptileList;
-use app\model\ReptileData;
+use Pctco\Info\HttpProxy;
 class Tools{
-   /**
-   * @name list
-   * @describe 任务列表
-   **/
-   public function list($domain){
-      $task =
-      ReptileList::where([
-         'domain'   =>   $domain,
-         'status'   =>   1
-      ])
-      ->order('utime')
-      ->find();
-
-      $task->parameter = json_decode($task->parameter,true);
-
-      foreach ($task->parameter as $kp => $vp) {
-         $task->page = str_replace('{'.$kp.'}',$vp,$task->page,$i);
-      }
-      $task->url = $task->domain.$task->page;
-      return $task;
+   function __construct(){
+      
    }
-   /**
-   * @name data
-   * @describe 任务数据
-   **/
-   public function data($query,$task){
-      $insert = 1;
-      foreach ($query as $k => $v) {
-         $IsData =
-         ReptileData::where([
-            'id'   =>  $task->id,
-            'url'   =>  $task->domain.$v['page']
-         ])
-         ->find();
-         if (empty($IsData)) {
-            $insert++;
-            ReptileData::insert([
-               'time'   =>   time(),
-               'id'   =>   $task->id,
-               'type'   =>   $task->parameter['function'],
-               'title'   =>   $v['title'],
-               'url'   =>   $task->domain.$v['page']
-            ]);
+   /** 
+    ** 根据timers字段排序 获取最小的 timers 数组
+    *? @date 22/07/09 00:54
+    *  @param Array $arrays 必须是二维数组
+    *! @return Array
+    */
+   public function MinTimers(Array $arrays){
+      $ac = array_column($arrays,'timers');
+      array_multisort($ac,SORT_ASC,$arrays);
+      return $arrays[0];
+   }
+   /** 
+    ** proxy
+    *? @date 22/07/09 01:06
+    *  @param myParam1 Explain the meaning of the parameter...
+    *  @param myParam2 Explain the meaning of the parameter...
+    *! @return 
+    */
+   public function proxy(){
+      // 是否开启代理
+      $status = false;
+      if ($status) {
+         $HttpProxy = new HttpProxy;
+         $zmhttp = $HttpProxy->get();
+         
+         if (empty($zmhttp)) {
+            return [
+               'code'   => 410,
+               'msg' => __CLASS__.'\\'.__FUNCTION__.' No HTTP Proxy resource '.date('H:i:s')
+            ];
          }
-      }
-
-      $task = $task->toArray();
-      if ($task['parameter']['page'] > 1) {
-         $task['parameter']['page']  = $task['parameter']['page'] - 1;
-      }
-
-      ReptileList::where([
-         'id'   =>   $task['id']
-      ])
-      ->update([
-         'utime'   =>   time(),
-         'parameter'   =>   json_encode($task['parameter'])
-      ]);
-
-      $insert = $insert === 1?0:$insert;
-      return '['.date('H:i:s').'] $this->'.$task['parameter']['function'].'(success)->page('.$task['parameter']['page'].')->insert('.$insert.');';
-   }
-
-   /**
-   * @name employ
-   * @describe 使用该数据
-   **/
-   public function employ($type = 'article'){
-      $employ =
-      ReptileData::where([
-         'type'   =>   $type
-      ])
-      ->order('time')
-      ->find()
-      ->toArray();
-
-      if (empty($employ)) {
+         
          return [
-            'title'   =>   '',
-            'url'   =>   ''
+            'code'   => 0,
+            'ip'  => $zmhttp['n1'].':'.$zmhttp['n2'],
+            'msg' => __CLASS__.'\\'.__FUNCTION__.' HTTP Proxy returned successfully '.date('H:i:s')
+         ];
+      }else{
+         return [
+            'code'   => 0,
+            'ip'  => '127.0.0.1',
+            'msg' => __CLASS__.'\\'.__FUNCTION__.' proxy mode is not enabled '.date('H:i:s')
          ];
       }
 
-      return $employ;
+
+      
    }
 }
