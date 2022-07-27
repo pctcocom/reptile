@@ -13,11 +13,7 @@ class Bilibili{
      *? @date 22/07/21 16:20
      */
     public function s1(){
-
-
         $model = $this->config['model']['bilibili'];
-        
-        
 
         /** 
          ** 如果 handle data 中没有数据则在json中加入需要处理的数据
@@ -28,6 +24,7 @@ class Bilibili{
             $request_url = $model['request']['s1']['url'];
 
             $model['query']['s1']['keyword'] = $tags['name'];
+            $model['query']['s1']['page'] = $tags['page'];
 
             $client = new \GuzzleHttp\Client();
             $proxy = 
@@ -74,8 +71,8 @@ class Bilibili{
             'data'  =>  $handleData
         ];
 
-        if ($this->config['model']['bilibili']['query']['s1']['page'] > 1) {
-            $this->config['model']['bilibili']['query']['s1']['page']--;
+        if ($this->config['model']['bilibili']['tags'][$tagsKey]['page'] > 1) {
+            $this->config['model']['bilibili']['tags'][$tagsKey]['page']--;
         }
 
         $this->config['model']['bilibili']['request']['s1']['timers'] = time();
