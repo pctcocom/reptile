@@ -27,6 +27,7 @@ class Movie{
         /** 
          ** 如果 handle data 中有数据先处理
          */
+        
         if (!empty($this->config['movie']['handle']['data'])) {
             $handle = $this->config['movie']['handle'];
             $itme = $handle['data'][0];
@@ -112,16 +113,31 @@ class Movie{
         $this->config['movie']['model'][$modelKey]['timers'] = time();
         $this->config['movie']['model'][$modelKey]['tag'][$modelTagKey]['timers'] = time();
         
+
+        $subjects = [];
+        foreach ($result['subjects'] as $vsubjects) {
+            $find = 
+            $this->ModelMovie
+            ->partition('p'.$this->config['movie']['handle']['classify'])
+            ->field('id')
+            ->where(['aid'=>$vsubjects['id'],'source'=>1])
+            ->find();
+
+            if (empty($find)) {
+                $subjects[] = $vsubjects;
+            }
+        }
+
         // handle 处理器进行数据存储
         $this->config['movie']['handle'] = [
             'classify'  =>  $model['classify'],
             'model' =>  $model['query']['type'],
             'function'  =>  's1',
-            'data'  =>  $result['subjects']
+            'data'  =>  $subjects
         ];
 
         // 更新相应的page_start页数
-        $config['movie']['timers']['s1']['max'] = 0;
+        $this->config['movie']['timers']['s1']['max'] = 0;
         foreach ($this->config['movie']['model'] as $k => $v) {
             if ($v['query']['type'] === $model['query']['type']) {
                 $page_limit = $guzzle['query']['page_limit'];
@@ -129,11 +145,11 @@ class Movie{
                 if ($page_start > $page_limit) {
                     $this->config['movie']['model'][$k]['tag'][$modelTagKey]['page_start'] = $page_start - $page_limit;
                 }else{
-                    $config['movie']['timers']['s1']['active']++;
+                    ++$this->config['movie']['timers']['s1']['active'];
                     $this->config['movie']['model'][$k]['tag'][$modelTagKey]['page_start'] = 0;
                 }
             }
-            $config['movie']['timers']['s1']['max'] = $config['movie']['timers']['s1']['max'] + count($this->config['movie']['model'][$k]['tag']);
+            $this->config['movie']['timers']['s1']['max'] = $this->config['movie']['timers']['s1']['max'] + count($this->config['movie']['model'][$k]['tag']);
         }
         
         file_put_contents($this->config['json']['path'],json_encode($this->config));
@@ -146,10 +162,11 @@ class Movie{
     public function s2(){
         $timers = 
         $this->ModelMovie
-        ->where('timers', 0)
-        ->field('id,aid,title,classify')
-        ->order('timers')
+        ->where('utime', 0)
+        ->field('id,aid,title,classify,utime')
         ->find();
+
+        if (empty($timers)) return false;
 
         $request_url = str_replace('{$doubanid}',$timers->aid,$this->config['movie']['request']['s2']);
 
@@ -210,10 +227,12 @@ class Movie{
                                     $sdate = trim($sdate);
                                     preg_match_all('/(?<=[(])[^()]+/',$sdate,$matches);
 
-                                    $data['sdate'][] = [
-                                        'date'  =>  preg_replace('/\(.*?\)/','',$sdate),
-                                        'country' =>  $matches[0][0]
-                                    ];
+                                    if(!empty($matches[0][0])){
+                                        $data['sdate'][] = [
+                                            'date'  =>  preg_replace('/\(.*?\)/','',$sdate),
+                                            'country' =>  $matches[0][0]
+                                        ]; 
+                                    }
                                 }
                                 break;
                             case '首播': // 电视剧字段
@@ -257,25 +276,12 @@ class Movie{
         ->all();
 
         if (empty($result[0])) {
-            $this->ModelMovie
-            ->where('id',$timers->id)
-            ->update([
-                'timers' => time()
-            ]);
-            return false;
+            return __CLASS__.'\\'.__FUNCTION__.' update failed $result[0] data does not exist '.date('H:i:s');
         }
 
         $result = $result[0];
 
         $result['original_title'] = trim(str_replace($timers->title,'',$result['title']));
-
-        $find = 
-        $this->ModelMovie
-        ->partition('p'.$timers->classify)
-        ->where(['id'=>$timers->id])
-        ->update([
-            'timers' => time()
-        ]);
 
         $cache = $this->ModelMovie->cache([
             'sid' => Skip::en('movie',$timers->id),
@@ -299,22 +305,28 @@ class Movie{
         return __CLASS__.'\\'.__FUNCTION__.' model('.$cache['classify_data']['nlname'].') id('.$cache['id'].') update completed '.date('H:i:s');
     }
     /** 
-     ** 收集演职员数据
+     ** 收集用户信息
+     * 主要收集信息：
+     * 1. 用户头像
+     * 2. 用户名称
+     * 3. 用户昵称
+     * 4. 所在地
      */
     public function s3(){
+        return $this->config['movie']['request']['s3'];
+    }
+    /** 
+     ** 收集演职员数据
+     */
+    public function s4(){
         
     }
     /** 
      ** 下载剧照
      */
-    public function s4(){
-
-    }
-    /** 
-     ** 收集短评数据
-     */
     public function s5(){
 
     }
+    
     
 }

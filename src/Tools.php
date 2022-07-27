@@ -9,12 +9,15 @@ class Tools{
     ** 根据timers字段排序 获取最小的 timers 数组
     *? @date 22/07/09 00:54
     *  @param Array $arrays 必须是二维数组
+    *  @param Boolean $result 返回结果类型  1.返回数组 2.返回key
     *! @return Array
     */
-   public function MinTimers(Array $arrays){
+   public function MinTimers(Array $arrays,$result = 1){
       $ac = array_column($arrays,'timers');
       array_multisort($ac,SORT_ASC,$arrays);
-      return $arrays[0];
+      if ($result === 1) return $arrays[0];
+      if ($result === 2) return key($arrays);
+      
    }
    /** 
     ** proxy
