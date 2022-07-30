@@ -54,7 +54,7 @@ class Bilibili{
             ->where('original_nickname',$s1['uname'])
             ->count();
 
-            if ($is === 0 && strpos($item['uname'],'bili_') === false) {
+            if ($is === 0 && strpos($s1['uname'],'bili_') === false) {
                 $handleData[] = [
                     'mid'   =>  $s1['mid'],
                     'uname' =>  $s1['uname'],
