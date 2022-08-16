@@ -30,6 +30,7 @@ class Stackoverflow{
         $model =  $this->config['model']['stackoverflow'];
         // 当前需要采集数据的小组
         $groups = $this->tools->MinTimers($model['groups']);
+
         // 检测表分区是否存在 不存在则创建
         $DBPartition = $this->DM->DBPartition('groups_questions',$groups['gid']);
         
@@ -42,6 +43,9 @@ class Stackoverflow{
             $client->request('GET',$request_url,[
                 'query'   =>  [
                     'tab'  =>  'Newest'
+                ],
+                'proxy' =>  [
+                    'https'  => '154.223.167.57:8888',
                 ],
                 'timeout' => 20
             ]);
@@ -93,7 +97,6 @@ class Stackoverflow{
                         'status'    =>  2
                     ]);
 
-
                     $this->GQuestions->cache([
                         'sid' => Skip::en('groups_questions',$gqid),
                         'gid' => $groups['gid'],
@@ -104,7 +107,7 @@ class Stackoverflow{
                             'reprint'   =>  $v['url']
                         ]
                     ]);
-                } 
+                }
             }
         } catch (ValidateException $e) {
             return '验证异常捕获：' .$e->getError();

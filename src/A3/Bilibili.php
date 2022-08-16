@@ -51,7 +51,7 @@ class Bilibili{
         foreach ($result as $s1) {
             $is = 
             $this->users
-            ->where('original_nickname',$s1['uname'])
+            ->where(['username'=>$s1['uname'],'nickname'=>$s1['uname'],'original_nickname'=>$s1['uname']])
             ->count();
 
             if ($is === 0 && strpos($s1['uname'],'bili_') === false) {
