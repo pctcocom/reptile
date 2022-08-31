@@ -242,7 +242,7 @@ class Hostinger{
 
         $this->model->where('id',$id)->update([
             'title' =>  $data[0]['title'],
-            'kw'    =>  $keywords,
+            'kw'    =>  $data[0]['kw'],
             'status'    =>  3
         ]);
 
