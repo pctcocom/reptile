@@ -1,6 +1,7 @@
 <?php
 namespace Pctco\Reptile;
 use Pctco\Info\HttpProxy;
+use Pctco\Types\Arrays;
 class Tools{
    function __construct(){
       
@@ -22,14 +23,15 @@ class Tools{
    /** 
     ** proxy
     *? @date 22/07/09 01:06
-    *  @param myParam1 Explain the meaning of the parameter...
-    *  @param myParam2 Explain the meaning of the parameter...
-    *! @return 
+    *  @param $status 是否开启代理
+    *! @return Array
     */
-   public function proxy(){
-      // 是否开启代理
-      $status = false;
-      if ($status) {
+   public function proxy($options = []){
+      $options = Arrays::merge([],[
+         'status'  => false
+      ],$options);
+
+      if ($options['status']) {
          $HttpProxy = new HttpProxy;
          $zmhttp = $HttpProxy->get();
          
@@ -47,13 +49,29 @@ class Tools{
          ];
       }else{
          return [
-            'code'   => 0,
-            'ip'  => '127.0.0.1',
+            'code'   => 413,
             'msg' => __CLASS__.'\\'.__FUNCTION__.' proxy mode is not enabled '.date('H:i:s')
          ];
       }
-
-
-      
+   }
+   /** 
+    ** 是否对 GuzzleHttp 进行代理配置
+    *? @date 22/08/30 10:38
+    *  @param $config guzzle 配置信息
+    *! @return Array
+    */
+   public function guzzle($config){
+      $proxy = 
+      $this->proxy([
+         'status'    =>  true
+      ]);
+      if ($proxy['code'] === 0) {
+         return Arrays::merge([],$config,[
+            'proxy' =>  [
+               'https'  => $proxy['ip'],
+            ]
+         ]);
+      }
+      return $config;
    }
 }

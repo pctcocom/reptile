@@ -19,11 +19,6 @@ class Movie{
      * 3. score 评分
      */
     public function s1(){
-
-        $proxy = $this->tools->proxy();
-
-        if ($proxy['code'] !== 0) return $proxy['msg'];
-
         /** 
          ** 如果 handle data 中有数据先处理
          */
@@ -90,9 +85,6 @@ class Movie{
             $client = new \GuzzleHttp\Client();
 
             $guzzle['query'] = $model['query'];
-            if ($proxy['ip'] !== '127.0.0.1') {
-                $guzzle['proxy']['https'] = $proxy['ip'];
-            }
             
             $result = 
             $client->request('get',$this->config['movie']['request']['s1'],$guzzle);
