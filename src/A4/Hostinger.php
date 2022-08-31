@@ -241,6 +241,7 @@ class Hostinger{
         $markdown_content = $this->markdown->html($data[0]['content']);
 
         $this->model->where('id',$id)->update([
+            'title' =>  $data[0]['title'],
             'kw'    =>  $keywords,
             'status'    =>  3
         ]);
