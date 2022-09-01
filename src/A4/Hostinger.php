@@ -134,7 +134,7 @@ class Hostinger{
                 'event' =>  'pull'
             ]
         ]);
-        
+
         $config = $this->config['model']['hostinger'];
 
         $this->config['model']['hostinger']['timers'] = time();
@@ -169,7 +169,7 @@ class Hostinger{
         if ($proxy === false) {
             return __CLASS__.'\\'.__FUNCTION__.' model(hostinger) GuzzleHttp request html data error '.date('H:i:s');
         }
-
+        
         $data = 
         QueryList::html($html)
         ->rules([
@@ -188,7 +188,10 @@ class Hostinger{
                 if(preg_match_all("/<img.*?data-lazy-src=\"(.*?)\".*?>/ism", $content, $img)){
                     $imgs = [];
                     foreach ($img[1] as $img_url) {
-                        $imgs[] = '<img src="'.rtrim($this->config['model']['hostinger']['domain'],'/').$img_url.'"><br>';
+                        if (substr($img_url,0,4) !== 'http') {
+                            $img_url = rtrim($this->config['model']['hostinger']['domain'],'/').$img_url;
+                        }
+                        $imgs[] = '<img src="'.$img_url.'"><br>';
                     }
                     $content = str_replace($img[0],$imgs,$content);
                 }
@@ -205,7 +208,7 @@ class Hostinger{
                  ** 去除或替换 div
                  *? @date 22/08/30 18:23
                  */
-                if(preg_match_all("/<div.*?class=\"(wp-block-image|protip)\".*?>(.*?)<\/div>/ism", $content, $div_label)){
+                if(preg_match_all("/<div.*?class=\"(wp-block-image|d-flex justify-content-center|protip)\".*?>(.*?)<\/div>/ism", $content, $div_label)){
                     foreach ($div_label[1] as $dlk => $dlv) {
                         if ($dlv === 'protip') {
                             $div_label[2][$dlk] = '<blockquote>'.$div_label[2][$dlk].'</blockquote>';
@@ -214,17 +217,27 @@ class Hostinger{
                     $content = str_replace($div_label[0],$div_label[2],$content);
                 }
 
-                /** 
-                 ** 替换 div.protip 为 blockquote
-                 *? @date 22/08/30 18:23
-                 */
-                
+                if(preg_match_all("/<div>(.*?)<\/div>/ism", $content, $div2_label)){
+                    $content = str_replace($div2_label[0],$div2_label[1],$content);
+                }
+
+                if(preg_match_all("/<span.*?>(.*?)<\/span>/ism", $content, $span_label)){
+                    $content = str_replace($span_label[0],$span_label[1],$content);
+                }
                 
                 /** 
                  ** 去除 figure
                  *? @date 22/08/30 18:23
                  */
-                if(preg_match_all("/<figure.*?class=\"(wp-block-table|aligncenter size-large|aligncenter size-full)\".*?>(.*?)<\/figure>/ism", $content, $figure_label)){
+                if(preg_match_all("/<figure.*?class=\"(wp-block-table|aligncenter|aligncenter size-large|aligncenter size-full)\".*?>(.*?)<\/figure>/ism", $content, $figure_label)){
+                    $content = str_replace($figure_label[0],$figure_label[2],$content);
+                }
+
+                /** 
+                 ** 去除 pre
+                 *? @date 22/09/01 13:46
+                 */
+                if(preg_match_all("/<pre.*?class=\"(wp-block-preformatted)\".*?>(.*?)<\/pre>/ism", $content, $figure_label)){
                     $content = str_replace($figure_label[0],$figure_label[2],$content);
                 }
                 return $content;
