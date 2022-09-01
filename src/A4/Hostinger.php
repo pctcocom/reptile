@@ -203,6 +203,22 @@ class Hostinger{
                 if(preg_match_all("/<a\s+href=\"([^.]+.(?:gif|jpg|jpeg|png|webp))\"[^><]+>(.*?)<\/a>/ism", $content, $a_img_link)){
                     $content = str_replace($a_img_link[0],$a_img_link[2],$content);
                 }
+                
+                /** 
+                 ** 将 a = 链接补全
+                 *? @date 22/09/01 23:26
+                 */
+                if (preg_match_all("/<a.*?href=\"(.*?)\".*?>.*?<\/a>/ism", $content, $a_link)) {
+                    $relative_link = [];
+                    $completion_link = [];
+                    foreach ($a_link[1] as $a_link_v) {
+                        if (substr($a_link_v,0,4) !== 'http') {
+                            $relative_link[] = $a_link_v;
+                            $completion_link[] = rtrim($this->config['model']['hostinger']['domain'],'/').$a_link_v;
+                        }
+                    }
+                    $content = str_replace($relative_link,$completion_link,$content);
+                }
 
                 /** 
                  ** 去除或替换 div
