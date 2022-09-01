@@ -136,6 +136,9 @@ class Stackabuse{
         ]);
 
         $config = $this->config['model']['stackabuse'];
+        
+        $menuKey = array_search($cache['menu'],array_column($this->config['menu'], 'id'));
+        $menu = $this->config['menu'][$menuKey];
 
         $this->config['model']['stackabuse']['timers'] = time();
         file_put_contents($this->config['json']['path'],json_encode($this->config));
@@ -192,7 +195,7 @@ class Stackabuse{
         ->getData()
         ->all();
 
-        $data[0]['kw'] = '';
+        $data[0]['kw'] = $menu['name'];
 
         $markdown_content = $this->markdown->html($data[0]['content']);
 
@@ -213,6 +216,6 @@ class Stackabuse{
             ]
         ]);
 
-        return __CLASS__.'\\'.__FUNCTION__.' id('.$id.') Updating data successfully '.date('H:i:s');
+        return __CLASS__.'\\'.__FUNCTION__.' id('.$id.') menu('.$menu['name'].') Updating data successfully '.date('H:i:s');
     }
 }
