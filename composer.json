@@ -4,7 +4,7 @@
     "keywords": ["reptile"],
     "homepage": "https://pctco.com",
     "license": "MIT",
-    "description": "Mobile reptile api of major platforms!",
+    "description": "...",
     "authors": [
         {
             "name": "pctco",
@@ -23,7 +23,7 @@
         "php": ">=7.1"
     },
     "suggest": {
-        "ext-event": "Mobile reptile api of major platforms!"
+        "ext-event": "..."
     },
     "autoload": {
         "psr-4": {
