@@ -200,8 +200,10 @@ class Stackabuse{
         $data[0]['kw'] = $menu['name'];
 
         if (empty($data[0]['content'])) {
-            $this->model->where('id',$id)->delete();
-            return __CLASS__.'\\'.__FUNCTION__.' 字段缺失： $data[0][content] '.date('H:i:s');
+            $this->model->where('id',$id)->update([
+                'status'    =>  4
+            ]);
+            return __CLASS__.'\\'.__FUNCTION__.' 异常链接： $data[0][content] '.date('H:i:s');
         }
 
         $markdown_content = $this->markdown->html($data[0]['content']);
