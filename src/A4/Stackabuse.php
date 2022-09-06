@@ -12,6 +12,8 @@ class Stackabuse{
         $this->DM = new DatabaseManage;
         $this->tools = new Tools();
         $this->model = new Article;
+        // timers 执行周期 time() + (3600*2)
+        $this->interval_timers = time();
         $this->markdown = new Markdown([
             'terminal'  =>  [
                 'status'  =>  false,
@@ -117,7 +119,7 @@ class Stackabuse{
         
         $this->config['model']['stackabuse']['category'][$category['menu_id']]['timers'] = time();
 
-        $this->config['model']['stackabuse']['timers'] = time();
+        $this->config['model']['stackabuse']['timers'] = $this->interval_timers;
 
         file_put_contents($this->config['json']['path'],json_encode($this->config));
 
@@ -140,7 +142,7 @@ class Stackabuse{
         $menuKey = array_search($cache['menu'],array_column($this->config['menu'], 'id'));
         $menu = $this->config['menu'][$menuKey];
 
-        $this->config['model']['stackabuse']['timers'] = time();
+        $this->config['model']['stackabuse']['timers'] = $this->interval_timers;
         file_put_contents($this->config['json']['path'],json_encode($this->config));
         try {
             $request_url = $cache['reprint'];
@@ -196,6 +198,11 @@ class Stackabuse{
         ->all();
 
         $data[0]['kw'] = $menu['name'];
+
+        if (empty($data[0]['content'])) {
+            $this->model->where('id',$id)->delete();
+            return __CLASS__.'\\'.__FUNCTION__.' 字段缺失： $data[0][content] '.date('H:i:s');
+        }
 
         $markdown_content = $this->markdown->html($data[0]['content']);
 

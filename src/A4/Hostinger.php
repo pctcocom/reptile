@@ -12,6 +12,8 @@ class Hostinger{
         $this->DM = new DatabaseManage;
         $this->tools = new Tools();
         $this->model = new Article;
+        // timers 执行周期
+        $this->interval_timers = time() + (3600*2);
         $this->markdown = new Markdown([
             'terminal'  =>  [
                 'status'  =>  false,
@@ -117,7 +119,7 @@ class Hostinger{
         
         $this->config['model']['hostinger']['category'][$category['menu_id']]['timers'] = time();
 
-        $this->config['model']['hostinger']['timers'] = time();
+        $this->config['model']['hostinger']['timers'] = $this->interval_timers;
 
         file_put_contents($this->config['json']['path'],json_encode($this->config));
 
@@ -137,7 +139,7 @@ class Hostinger{
 
         $config = $this->config['model']['hostinger'];
 
-        $this->config['model']['hostinger']['timers'] = time();
+        $this->config['model']['hostinger']['timers'] = $this->interval_timers;
         file_put_contents($this->config['json']['path'],json_encode($this->config));
         try {
             $request_url = $cache['reprint'];
