@@ -43,7 +43,16 @@ class Hostinger{
             ];
 
             if ($config['proxy']['status'] === 1) {
-                $guzzle_config = $this->tools->guzzle($guzzle_config);
+                $guzzle_config = $this->tools->guzzle([
+                    'proxy'  => [
+                        'get' => [
+                           'where'  => [
+                              'n5'    =>  1
+                           ]
+                        ]
+                    ],
+                    'guzzle'    =>  $guzzle_config
+                ]);
             }
 
             $proxy = 
@@ -151,7 +160,16 @@ class Hostinger{
             ];
 
             if ($config['proxy']['status'] === 1) {
-                $guzzle_config = $this->tools->guzzle($guzzle_config);
+                $guzzle_config = $this->tools->guzzle([
+                    'proxy'  => [
+                        'get' => [
+                           'where'  => [
+                              'n5'    =>  1
+                           ]
+                        ]
+                    ],
+                    'guzzle'    =>  $guzzle_config
+                ]);
             }
 
             $proxy = 

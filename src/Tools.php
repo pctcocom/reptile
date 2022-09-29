@@ -28,14 +28,19 @@ class Tools{
     */
    public function proxy($options = []){
       $options = Arrays::merge([],[
-         'status'  => false
+         'status'  => false,
+         'get' => [
+            'where'  => [
+               'type'  =>  'httpproxy',
+               'n5'    =>  86
+            ]
+         ]
       ],$options);
 
       if ($options['status']) {
          $HttpProxy = new HttpProxy;
-         $zmhttp = $HttpProxy->get();
-         
-         if (empty($zmhttp)) {
+         $proxy = $HttpProxy->get($options['get']);
+         if (empty($proxy)) {
             return [
                'code'   => 410,
                'msg' => __CLASS__.'\\'.__FUNCTION__.' No HTTP Proxy resource '.date('H:i:s')
@@ -44,7 +49,7 @@ class Tools{
          
          return [
             'code'   => 0,
-            'ip'  => $zmhttp['n1'].':'.$zmhttp['n2'],
+            'ip'  => $proxy['n1'].':'.$proxy['n2'],
             'msg' => __CLASS__.'\\'.__FUNCTION__.' HTTP Proxy returned successfully '.date('H:i:s')
          ];
       }else{
@@ -60,18 +65,29 @@ class Tools{
     *  @param $config guzzle 配置信息
     *! @return Array
     */
-   public function guzzle($config){
+   public function guzzle($options = []){
+      $options = Arrays::merge([],[
+         'proxy'  => [
+            'status' => true,
+            'get' => [
+               'where'  => [
+                  'type'  =>  'httpproxy',
+                  'n5'    =>  86
+               ]
+            ]
+         ],
+         'guzzle' => []
+      ],$options);
+
       $proxy = 
-      $this->proxy([
-         'status'    =>  true
-      ]);
+      $this->proxy($options['proxy']);
       if ($proxy['code'] === 0) {
-         return Arrays::merge([],$config,[
+         return Arrays::merge([],$options['guzzle'],[
             'proxy' =>  [
                'https'  => $proxy['ip'],
             ]
          ]);
       }
-      return $config;
+      return $options['guzzle'];
    }
 }

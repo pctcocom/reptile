@@ -12,6 +12,8 @@ class Stackoverflow{
         $this->GQuestions = new GroupsQuestions;
         $this->DM = new DatabaseManage;
         $this->tools = new Tools();
+        // timers 执行周期 time() + (3600*2)
+        $this->interval_timers = time();
         $this->markdown = new Markdown([
             'terminal'  =>  [
                 'status'  =>  false,
@@ -31,36 +33,38 @@ class Stackoverflow{
         // 当前需要采集数据的小组
         $groups = $this->tools->MinTimers($model['groups']);
 
-        // 检测表分区是否存在 不存在则创建
-        $DBPartition = $this->DM->DBPartition('groups_questions',$groups['gid']);
-        
-        
-
         try {
             $request_url = str_replace('{$tagged}',$groups['name'],$model['request']);
             $client = new \GuzzleHttp\Client();
-            $proxy = 
-            $client->request('GET',$request_url,[
-                'query'   =>  [
-                    'tab'  =>  'Newest'
+
+            $guzzle_config = $this->tools->guzzle([
+                'proxy'  => [
+                    'get' => [
+                       'where'  => [
+                          'n5'    =>  1
+                       ]
+                    ]
                 ],
-                'proxy' =>  [
-                    'https'  => '154.223.167.57:8888',
-                ],
-                'timeout' => 20
+                'guzzle'    =>  [
+                    'query'   =>  [
+                        'tab'  =>  'Newest'
+                    ],
+                    'timeout' => 20
+                ]
             ]);
+
+            $proxy = 
+            $client->request('GET',$request_url,$guzzle_config);
 
             if ($proxy->getStatusCode() == 200) {
                 $html = $proxy->getBody()->getContents();
             }else{
-                $proxy = false;
+                return __CLASS__.'\\'.__FUNCTION__.' GuzzleHttp：' .$proxy->getStatusCode();
             }
-        } catch (\Throwable $th) {
-            $proxy = false;
-        }
-
-        if ($proxy === false) {
-            return __CLASS__.'\\'.__FUNCTION__.' model(stackoverflow) groups('.$groups['name'].') GuzzleHttp request html data error '.date('H:i:s');
+        }  catch (ValidateException $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 验证异常捕获：' .$e->getError();
+        } catch (\Exception $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
         }
         
         $result = 
@@ -77,13 +81,15 @@ class Stackoverflow{
         ->getData()
         ->all();
         return $result;
-
         try {
             foreach ($result as $v) {
                 $is = 
                 $this->GQuestions
                 ->partition('p'.$groups['gid'])
-                ->where('aid',$v['aid'])
+                ->where([
+                    'source'    =>  $model['source'],
+                    'reprint'   =>  $v['url']
+                ])
                 ->count();
     
                 if ($is === 0) {
@@ -91,10 +97,11 @@ class Stackoverflow{
                     $this->GQuestions
                     ->partition('p'.$groups['gid'])
                     ->insertGetId([
-                        'aid'   =>  $v['aid'],
                         'gid'   =>  $groups['gid'],
                         'source'    =>  $model['source'],
-                        'status'    =>  2
+                        'reprint'  =>  $v['url'],
+                        'status'    =>  8,
+                        'atime' =>  time()
                     ]);
 
                     $this->GQuestions->cache([
@@ -102,9 +109,6 @@ class Stackoverflow{
                         'gid' => $groups['gid'],
                         'handle'    =>  [
                             'event' =>  'set'
-                        ],
-                        'data'  =>  [
-                            'reprint'   =>  $v['url']
                         ]
                     ]);
                 }
@@ -115,7 +119,14 @@ class Stackoverflow{
             return '异常捕获：' .$e->getMessage();
         }
         
-        $this->config['model']['stackoverflow']['groups'][$groups['gid']]['timers'] = time();
+        $this->config['model']['stackoverflow']['timers'] = $this->interval_timers;
+
+        $interval_timers_hours = $this->config['model']['stackoverflow']['groups'][$groups['gid']]['interval_timers_hours'];
+        if ($interval_timers_hours !== 0) {
+            $interval_timers_hours = 3600*$interval_timers_hours;
+        }
+        $this->config['model']['stackoverflow']['groups'][$groups['gid']]['timers'] = time() + $interval_timers_hours;
+
         file_put_contents($this->config['json']['path'],json_encode($this->config));
 
         return __CLASS__.'\\'.__FUNCTION__.' model(stackoverflow) groups('.$groups['name'].') data('.count($result).') api interface data storage success '.date('H:i:s');
@@ -124,21 +135,98 @@ class Stackoverflow{
      ** 收集问答信息
      */
     public function s2(){
-        $request_url = 'https://stackoverflow.com/questions/67993442/hhh90001006-missing-cachedefault-update-timestamps-region-was-created-on-the';
+        try {
+            $request_url = 'https://stackoverflow.com/questions/67993442/hhh90001006-missing-cachedefault-update-timestamps-region-was-created-on-the';
+            $client = new \GuzzleHttp\Client();
+            $proxy = 
+            $client->request('GET',$request_url,[
+                'query'   =>  [
+                    'tab'  =>  'Newest'
+                ],
+                // 'proxy' =>  [
+                //     'https'  => '154.223.167.57:8888',
+                // ],
+                'timeout' => 20
+            ]);
 
-        $html = QueryList::get($request_url)->getHtml();
+            if ($proxy->getStatusCode() == 200) {
+                $html = $proxy->getBody()->getContents();
+            }else{
+                return __CLASS__.'\\'.__FUNCTION__.' GuzzleHttp：' .$proxy->getStatusCode();
+            }
+        }  catch (ValidateException $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 验证异常捕获：' .$e->getError();
+        } catch (\Exception $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
+        }
 
         $content = QueryList::html($html)->find('.postcell .s-prose')->html();
-        $keywords = QueryList::html($html)->find('.mt24 .post-taglist .d-flex a')->texts()->all();
-
         $content = $this->markdown->html($content);
         
+        $keywords = QueryList::html($html)->find('.mt24 .post-taglist .d-flex a')->texts()->all();
+        
+        $user_atime = QueryList::html($html)->find('.mb0 .post-signature.owner .user-info .user-action-time .relativetime')->attrs('title')->all();
+
+        $user_my = QueryList::html($html)->find('.mb0 .post-signature.owner .user-info .user-details a')->attrs('href')->all();
+
+        preg_match_all('/\/users\/(\d+)\/.*?/',$user_my[0],$matches);
+        $user_id = $matches[1][0];
+
+        return [
+            'content'  =>  $content,
+            'keywords' =>  $keywords,
+            'user'  =>  [
+                'my'    =>  $user_my[0],
+                'id'    =>  $user_id,
+                'date'  =>  [
+                    'time'  =>  $user_atime[0],
+                    'date'  =>  strtotime($user_atime[0])
+                ]
+            ]
+        ];
+    }
+    /** 
+     ** 收集一级评论
+     */
+    public function s3(){
+        try {
+            $request_url = 'https://stackoverflow.com/questions/12717112/how-to-display-woocommerce-category-image';
+            $client = new \GuzzleHttp\Client();
+            $proxy = 
+            $client->request('GET',$request_url,[
+                'query'   =>  [
+                    'tab'  =>  'Newest'
+                ],
+                // 'proxy' =>  [
+                //     'https'  => '154.223.167.57:8888',
+                // ],
+                'timeout' => 20
+            ]);
+
+            if ($proxy->getStatusCode() == 200) {
+                $html = $proxy->getBody()->getContents();
+            }else{
+                return __CLASS__.'\\'.__FUNCTION__.' GuzzleHttp：' .$proxy->getStatusCode();
+            }
+        }  catch (ValidateException $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 验证异常捕获：' .$e->getError();
+        } catch (\Exception $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
+        }
+
+        /** 
+         ** 正常评论
+         *? @date 22/09/29 16:39
+         */
         $comment = 
         QueryList::html($html)
         ->rules([
             // 评论id
             'id' =>  ['#answers .answer','data-answerid','',function($id){
-                return $id;
+                return (int)$id;
+            }],
+            'pid'   =>  ['#answers .answer','data-answerid','',function($pid){
+                return 0;
             }],
             // 判断是否采纳
             'votecell' =>  ['#answers .answer .post-layout .post-layout--left .js-voting-container .js-accepted-answer-indicator','class','',function($votecell){
@@ -154,19 +242,97 @@ class Stackoverflow{
         ->getData()
         ->all();
 
+        /** 
+         ** 短评论（问答内容下方的评论）
+         *? @date 22/09/29 16:39
+         */
+
+        $short_comment = 
+        QueryList::html($html)
+        ->rules([
+            // 评论id
+            'id' =>  ['#comments-12717112 .comments-list .comment','data-comment-id','',function($id){
+                return (int)$id;
+            }],
+            'pid'   =>  ['#comments-12717112 .comments-list .comment','data-comment-id','',function($pid){
+                return 0;
+            }],
+            // 判断是否采纳
+            'votecell' =>  ['#comments-12717112 .comments-list .comment','data-comment-id','',function($votecell){
+                return false;
+            }],
+            // 评论内容
+            'content' =>  ['#comments-12717112 .comments-list .comment .comment-text .comment-body .comment-copy','html','',function($content){
+                return $this->markdown->html($content);
+            }]
+        ])
+        ->query()
+        ->getData()
+        ->all();
+
+        dump($short_comment);
+        dump($comment);
+
         return $comment;
     }
     /** 
-     ** 收集演职员数据
-     */
-    public function s3(){
-        
-    }
-    /** 
-     ** 下载剧照
+     ** 收集二级评论
      */
     public function s4(){
+        try {
+            $request_url = 'https://stackoverflow.com/questions/67993442/hhh90001006-missing-cachedefault-update-timestamps-region-was-created-on-the';
+            $client = new \GuzzleHttp\Client();
+            $proxy = 
+            $client->request('GET',$request_url,[
+                'query'   =>  [
+                    'tab'  =>  'Newest'
+                ],
+                // 'proxy' =>  [
+                //     'https'  => '154.223.167.57:8888',
+                // ],
+                'timeout' => 20
+            ]);
 
+            if ($proxy->getStatusCode() == 200) {
+                $html = $proxy->getBody()->getContents();
+            }else{
+                return __CLASS__.'\\'.__FUNCTION__.' GuzzleHttp：' .$proxy->getStatusCode();
+            }
+        }  catch (ValidateException $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 验证异常捕获：' .$e->getError();
+        } catch (\Exception $e) {
+            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
+        }
+
+        $this->s4_pid = 100;
+        // 一级评论id
+        $this->s4_comments_id = '68068523';
+
+        $comment = 
+        QueryList::html($html)
+        ->rules([
+            'user'  =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment .d-inline-flex a','href','',function($user){
+                preg_match_all('/\/users\/(\d+)\/.*?/',$user,$matches);
+                return [
+                    'my'    =>  $user,
+                    'id'    =>  $matches[1][0]
+                ];
+            }],
+            'id'    =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment','data-comment-id','',function($id){
+                return $id;
+            }],
+            'pid'   =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment','data-comment-id','',function($pid){
+                return $this->s4_pid;
+            }],
+            'comment'   =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment .comment-copy','html','',function($comment){
+                return $this->markdown->html($comment);
+            }]
+        ])
+        ->query()
+        ->getData()
+        ->all();
+
+        return $comment;
     }
     /** 
      ** 收集短评数据
