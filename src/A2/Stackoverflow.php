@@ -49,7 +49,7 @@ class Stackoverflow{
                     'query'   =>  [
                         'tab'  =>  'Newest'
                     ],
-                    'timeout' => 20
+                    'timeout' => 36
                 ]
             ]);
 
@@ -80,7 +80,7 @@ class Stackoverflow{
         ->query()
         ->getData()
         ->all();
-        return $result;
+        
         try {
             foreach ($result as $v) {
                 $is = 
@@ -134,20 +134,28 @@ class Stackoverflow{
     /** 
      ** 收集问答信息
      */
-    public function s2(){
+    public function s2($timers){
+        
         try {
-            $request_url = 'https://stackoverflow.com/questions/67993442/hhh90001006-missing-cachedefault-update-timestamps-region-was-created-on-the';
+            $request_url = $this->GQuestions->getAttr['source'][$timers->source]['domain'].$timers->reprint;
+
             $client = new \GuzzleHttp\Client();
-            $proxy = 
-            $client->request('GET',$request_url,[
-                'query'   =>  [
-                    'tab'  =>  'Newest'
+
+            $guzzle_config = $this->tools->guzzle([
+                'proxy'  => [
+                    'get' => [
+                       'where'  => [
+                          'n5'    =>  1
+                       ]
+                    ]
                 ],
-                // 'proxy' =>  [
-                //     'https'  => '154.223.167.57:8888',
-                // ],
-                'timeout' => 20
+                'guzzle'    =>  [
+                    'timeout' => 36
+                ]
             ]);
+
+            $proxy = 
+            $client->request('GET',$request_url,$guzzle_config);
 
             if ($proxy->getStatusCode() == 200) {
                 $html = $proxy->getBody()->getContents();
@@ -160,30 +168,60 @@ class Stackoverflow{
             return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
         }
 
+        $title = QueryList::html($html)->find('#question-header a.question-hyperlink')->html();
+
         $content = QueryList::html($html)->find('.postcell .s-prose')->html();
-        $content = $this->markdown->html($content);
+        $content = $this->markdown->html($content,[
+            'tags' => [
+                // 是否去除 HTML 标签
+                'strip_tags' => true
+            ],
+            'table' =>  [
+                // div table 转 Markdown tables
+                'converter' =>  true
+            ]
+        ]);
         
         $keywords = QueryList::html($html)->find('.mt24 .post-taglist .d-flex a')->texts()->all();
         
-        $user_atime = QueryList::html($html)->find('.mb0 .post-signature.owner .user-info .user-action-time .relativetime')->attrs('title')->all();
+        $author_atime = QueryList::html($html)->find('.mb0 .post-signature.owner .user-info .user-action-time .relativetime')->attrs('title')->all();
 
-        $user_my = QueryList::html($html)->find('.mb0 .post-signature.owner .user-info .user-details a')->attrs('href')->all();
+        $author_my = QueryList::html($html)->find('.mb0 .post-signature.owner .user-info .user-details a')->attrs('href')->all();
 
-        preg_match_all('/\/users\/(\d+)\/.*?/',$user_my[0],$matches);
-        $user_id = $matches[1][0];
+        preg_match_all('/\/users\/(\d+)\/.*?/',$author_my[0],$matches);
+        $author_id = $matches[1][0];
 
-        return [
-            'content'  =>  $content,
-            'keywords' =>  $keywords,
-            'user'  =>  [
-                'my'    =>  $user_my[0],
-                'id'    =>  $user_id,
-                'date'  =>  [
-                    'time'  =>  $user_atime[0],
-                    'date'  =>  strtotime($user_atime[0])
-                ]
-            ]
-        ];
+        $this->GQuestions
+        ->where([
+            'id'    =>  $timers->id
+        ])
+        ->update([
+            'title' =>  $title,
+            'kw'    =>  ','.implode(',',$keywords).',',
+            'status'    =>  7,
+            'utime' =>  time()
+        ]);
+
+        return $this->GQuestions->cache([
+            'sid' => Skip::en('groups_questions',$timers->id),
+            'gid' => $timers->gid,
+            'handle'    =>  [
+                'event' =>  'set'
+            ],
+            'data'  =>  [
+                'author'    =>  [
+                    'my'    =>  $author_my[0],
+                    'id'    =>  $author_id,
+                    'date'  =>  [
+                        'time'  =>  $author_atime[0],
+                        'date'  =>  strtotime($author_atime[0])
+                    ]
+                ],
+                'original_title'  =>  $title,
+                'content' =>  $content,
+                'original_content'  =>  $content
+            ]  
+        ]);
     }
     /** 
      ** 收集一级评论
