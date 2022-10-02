@@ -137,7 +137,7 @@ class Stackoverflow{
     public function s2($timers){
         
         try {
-            $request_url = 'https://stackoverflow.com/questions/73914141/how-to-send-image-that-is-uploaded-to-server-directory-and-send-to-telegram-bot';
+            $request_url = $this->GQuestions->getAttr['source'][$timers->source]['domain'].$timers->reprint;
 
             $client = new \GuzzleHttp\Client();
 
