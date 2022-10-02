@@ -137,7 +137,7 @@ class Stackoverflow{
     public function s2($timers){
         
         try {
-            $request_url = $this->GQuestions->getAttr['source'][$timers->source]['domain'].$timers->reprint;
+            $request_url = 'https://stackoverflow.com/questions/73914141/how-to-send-image-that-is-uploaded-to-server-directory-and-send-to-telegram-bot';
 
             $client = new \GuzzleHttp\Client();
 
@@ -165,6 +165,16 @@ class Stackoverflow{
         }  catch (ValidateException $e) {
             return __CLASS__.'\\'.__FUNCTION__.' 验证异常捕获：' .$e->getError();
         } catch (\Exception $e) {
+            if ($e->getCode() === 404) {
+                $this->GQuestions
+                ->where([
+                    'id'    =>  $timers->id
+                ])
+                ->update([
+                    'status'    =>  10,
+                    'utime' =>  time()
+                ]);
+            }
             return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
         }
 
@@ -202,7 +212,7 @@ class Stackoverflow{
             'utime' =>  time()
         ]);
 
-        return $this->GQuestions->cache([
+        $cache = $this->GQuestions->cache([
             'sid' => Skip::en('groups_questions',$timers->id),
             'gid' => $timers->gid,
             'handle'    =>  [
@@ -222,6 +232,8 @@ class Stackoverflow{
                 'original_content'  =>  $content
             ]  
         ]);
+
+        return __CLASS__.'\\'.__FUNCTION__.' model(stackoverflow) id = '.$timers->id.' groups('.$cache['gid_data']['name'].')  '.date('H:i:s');
     }
     /** 
      ** 收集一级评论
