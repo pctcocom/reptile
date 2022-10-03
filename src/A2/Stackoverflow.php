@@ -40,16 +40,17 @@ class Stackoverflow{
             $guzzle_config = $this->tools->guzzle([
                 'proxy'  => [
                     'get' => [
-                       'where'  => [
-                          'n5'    =>  1
-                       ]
+                        'where'  => [
+                            'n5'    =>  'USA'
+                        ],
+                        'order' =>  'timers0'
                     ]
                 ],
                 'guzzle'    =>  [
                     'query'   =>  [
                         'tab'  =>  'Newest'
                     ],
-                    'timeout' => 36
+                    'timeout' => 45
                 ]
             ]);
 
@@ -144,13 +145,14 @@ class Stackoverflow{
             $guzzle_config = $this->tools->guzzle([
                 'proxy'  => [
                     'get' => [
-                       'where'  => [
-                          'n5'    =>  1
-                       ]
+                        'where'  => [
+                            'n5'    =>  'USA'
+                        ],
+                       'order' =>  'timers0'
                     ]
                 ],
                 'guzzle'    =>  [
-                    'timeout' => 36
+                    'timeout' => 45
                 ]
             ]);
 

@@ -46,9 +46,9 @@ class Stackabuse{
                 $guzzle_config = $this->tools->guzzle([
                     'proxy'  => [
                         'get' => [
-                           'where'  => [
-                              'n5'    =>  1
-                           ]
+                            'where'  => [
+                                'n5'    =>  'USA'
+                            ]
                         ]
                     ],
                     'guzzle'    =>  $guzzle_config
@@ -166,9 +166,9 @@ class Stackabuse{
                 $guzzle_config = $this->tools->guzzle([
                     'proxy'  => [
                         'get' => [
-                           'where'  => [
-                              'n5'    =>  1
-                           ]
+                            'where'  => [
+                                'n5'    =>  'USA'
+                            ]
                         ]
                     ],
                     'guzzle'    =>  $guzzle_config

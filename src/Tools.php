@@ -32,8 +32,9 @@ class Tools{
          'get' => [
             'where'  => [
                'type'  =>  'httpproxy',
-               'n5'    =>  86
-            ]
+               'n5'    =>  'CHN'
+            ],
+            'order' =>  'timers'
          ]
       ],$options);
 
@@ -72,8 +73,9 @@ class Tools{
             'get' => [
                'where'  => [
                   'type'  =>  'httpproxy',
-                  'n5'    =>  86
-               ]
+                  'n5'    =>  'CHN'
+               ],
+               'order' =>  'timers'
             ]
          ],
          'guzzle' => []
