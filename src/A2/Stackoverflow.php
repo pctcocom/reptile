@@ -200,8 +200,11 @@ class Stackoverflow{
 
         $author_my = QueryList::html($html)->find('.mb0 .post-signature.owner .user-info .user-details a')->attrs('href')->all();
 
-        preg_match_all('/\/users\/(\d+)\/.*?/',$author_my[0],$matches);
-        $author_id = $matches[1][0];
+        $author_id = null;
+        if (!empty($author_my)) {
+            preg_match_all('/\/users\/(\d+)\/.*?/',$author_my[0],$matches);
+            $author_id = $matches[1][0];
+        }
 
         $this->GQuestions
         ->where([
