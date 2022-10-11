@@ -177,7 +177,17 @@ class Stackoverflow{
                     'utime' =>  time()
                 ]);
             }
-            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
+            if ($e->getCode() === 0) {
+                $this->GQuestions
+                ->where([
+                    'id'    =>  $timers->id
+                ])
+                ->update([
+                    'status'    =>  11,
+                    'utime' =>  time()
+                ]);
+            }
+            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获（'.$e->getCode().'）：' .$e->getMessage();
         }
 
         $title = QueryList::html($html)->find('#question-header a.question-hyperlink')->html();
@@ -243,20 +253,27 @@ class Stackoverflow{
     /** 
      ** 收集一级评论
      */
-    public function s3(){
+    public function s3($timers){
         try {
-            $request_url = 'https://stackoverflow.com/questions/12717112/how-to-display-woocommerce-category-image';
+            $request_url = $this->GQuestions->getAttr['source'][$timers->source]['domain'].$timers->reprint;
             $client = new \GuzzleHttp\Client();
-            $proxy = 
-            $client->request('GET',$request_url,[
-                'query'   =>  [
-                    'tab'  =>  'Newest'
+
+            $guzzle_config = $this->tools->guzzle([
+                'proxy'  => [
+                    'get' => [
+                        'where'  => [
+                            'n5'    =>  'USA'
+                        ],
+                       'order' =>  'timers0'
+                    ]
                 ],
-                // 'proxy' =>  [
-                //     'https'  => '154.223.167.57:8888',
-                // ],
-                'timeout' => 20
+                'guzzle'    =>  [
+                    'timeout' => 45
+                ]
             ]);
+
+            $proxy = 
+            $client->request('GET',$request_url,$guzzle_config);
 
             if ($proxy->getStatusCode() == 200) {
                 $html = $proxy->getBody()->getContents();
@@ -266,8 +283,35 @@ class Stackoverflow{
         }  catch (ValidateException $e) {
             return __CLASS__.'\\'.__FUNCTION__.' 验证异常捕获：' .$e->getError();
         } catch (\Exception $e) {
+            if ($e->getCode() === 404) {
+                $this->GQuestions
+                ->where([
+                    'id'    =>  $timers->id
+                ])
+                ->update([
+                    'status'    =>  10,
+                    'utime' =>  time()
+                ]);
+            }
+            if ($e->getCode() === 0) {
+                $this->GQuestions
+                ->where([
+                    'id'    =>  $timers->id
+                ])
+                ->update([
+                    'status'    =>  11,
+                    'utime' =>  time()
+                ]);
+            }
             return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
         }
+
+        /** 
+         ** 获取帖子id
+         *? @date 22/10/08 00:40
+         */
+        preg_match_all('/https:\/\/stackoverflow.com\/questions\/(\d+)\/.*?/',$request_url,$matches);
+        $this->s3_post_id = $matches[1][0];
 
         /** 
          ** 正常评论
@@ -276,6 +320,13 @@ class Stackoverflow{
         $comment = 
         QueryList::html($html)
         ->rules([
+            'user'  =>  ['#answers .answer .post-layout .answercell .user-info [itemprop=author] >a','href','',function($user){
+                preg_match_all('/\/users\/(\d+)\/.*?/',$user,$matches);
+                return [
+                    'my'    =>  $user,
+                    'id'    =>  $matches[1][0]
+                ];
+            }],
             // 评论id
             'id' =>  ['#answers .answer','data-answerid','',function($id){
                 return (int)$id;
@@ -288,9 +339,26 @@ class Stackoverflow{
                 // return 结果为 true 说明是采纳答案
                 return strpos($votecell,'d-none') === false;
             }],
+            // 是否翻译 1 = 是 | 0 = 没翻译
+            'translate'   =>  ['#answers .answer','data-answerid','',function($translate){
+                return 0;
+            }],
+            // 是否收集了二级评论 1 = 是 | 0 = 没有
+            'secondary-comments'   =>  ['#answers .answer','data-answerid','',function($translate){
+                return 0;
+            }],
             // 评论内容
             'content' =>  ['#answers .answer .post-layout .answercell .s-prose','html','',function($content){
-                return $this->markdown->html($content);
+                return $this->markdown->html($content,[
+                    'tags' => [
+                        // 是否去除 HTML 标签
+                        'strip_tags' => true
+                    ],
+                    'table' =>  [
+                        // div table 转 Markdown tables
+                        'converter' =>  true
+                    ]
+                ]);
             }]
         ])
         ->query()
@@ -305,66 +373,137 @@ class Stackoverflow{
         $short_comment = 
         QueryList::html($html)
         ->rules([
+            'user'  =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment .comment-user','href','',function($user){
+                preg_match_all('/\/users\/(\d+)\/.*?/',$user,$matches);
+                return [
+                    'my'    =>  $user,
+                    'id'    =>  $matches[1][0]
+                ];
+            }],
             // 评论id
-            'id' =>  ['#comments-12717112 .comments-list .comment','data-comment-id','',function($id){
+            'id' =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment','data-comment-id','',function($id){
                 return (int)$id;
             }],
-            'pid'   =>  ['#comments-12717112 .comments-list .comment','data-comment-id','',function($pid){
+            'pid'   =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment','data-comment-id','',function($pid){
                 return 0;
             }],
             // 判断是否采纳
-            'votecell' =>  ['#comments-12717112 .comments-list .comment','data-comment-id','',function($votecell){
+            'votecell' =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment','data-comment-id','',function($votecell){
                 return false;
             }],
+            // 是否翻译 1 = 是 | 0 = 没翻译
+            'translate'   =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment','data-comment-id','',function($translate){
+                return 0;
+            }],
+            // 是否收集了二级评论 1 = 是 | 0 = 没有
+            'secondary-comments'   =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment','data-comment-id','',function($translate){
+                return 1;
+            }],
             // 评论内容
-            'content' =>  ['#comments-12717112 .comments-list .comment .comment-text .comment-body .comment-copy','html','',function($content){
-                return $this->markdown->html($content);
+            'content' =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment .comment-text .comment-body .comment-copy','html','',function($content){
+                return $this->markdown->html($content,[
+                    'tags' => [
+                        // 是否去除 HTML 标签
+                        'strip_tags' => true
+                    ],
+                    'table' =>  [
+                        // div table 转 Markdown tables
+                        'converter' =>  true
+                    ]
+                ]);
             }]
         ])
         ->query()
         ->getData()
         ->all();
+        
+        $page_html = false;
+        $status = 7;
+        
+        foreach ($comment as $k => $c) {
+            if ($c['votecell'] === true) {
+                $page_html = $html;
+                $status = 6;
+                break;
+            }
+        }
 
-        dump($short_comment);
-        dump($comment);
+        $all_comment = array_merge($short_comment,$comment);
 
-        return $comment;
+        $this->GQuestions
+        ->where([
+            'id'    =>  $timers->id
+        ])
+        ->update([
+            // 如果已经采纳则状态 = 3
+            'status'    =>  $status,
+            'utime' =>  time(),
+            // 获取评论 如果没有采纳答案则 86400*3 3天后在继续
+            'timers'    =>  time() + 86400*3
+        ]);
+
+        $cache = $this->GQuestions->cache([
+            'sid' => Skip::en('groups_questions',$timers->id),
+            'gid' => $timers->gid,
+            'handle'    =>  [
+                'event' =>  'set'
+            ],
+            'data'  =>  [
+                'comment_data'  =>  $all_comment,
+                'page_html'  =>  $page_html
+            ]
+        ]);
+
+        return __CLASS__.'\\'.__FUNCTION__.' model(stackoverflow) id = '.$timers->id.' groups('.$cache['gid_data']['name'].') comment('.$cache['comment'].') '.date('H:i:s');
     }
     /** 
      ** 收集二级评论
+     * 必须是已采纳的帖子才会进入s4处理二级评论
      */
-    public function s4(){
-        try {
-            $request_url = 'https://stackoverflow.com/questions/67993442/hhh90001006-missing-cachedefault-update-timestamps-region-was-created-on-the';
-            $client = new \GuzzleHttp\Client();
-            $proxy = 
-            $client->request('GET',$request_url,[
-                'query'   =>  [
-                    'tab'  =>  'Newest'
-                ],
-                // 'proxy' =>  [
-                //     'https'  => '154.223.167.57:8888',
-                // ],
-                'timeout' => 20
+    public function s4($timers){
+        $cache = $this->GQuestions->cache([
+            'sid' => Skip::en('groups_questions',$timers->id),
+            'gid' => $timers->gid,
+            'handle'    =>  [
+                'event' =>  'pull',
+                'field' =>  ['comment_data','page_html','gid_data']
+            ]
+        ]);
+
+        // 获取想要处理二级评论的数组
+        $commentsKey = array_search(0,array_column($cache['comment_data'], 'secondary-comments'));
+
+        if ($commentsKey === false) {
+            $this->GQuestions
+            ->where([
+                'id'    =>  $timers->id
+            ])
+            ->update([
+                'status'    =>  5,
+                'utime' =>  time()
             ]);
 
-            if ($proxy->getStatusCode() == 200) {
-                $html = $proxy->getBody()->getContents();
-            }else{
-                return __CLASS__.'\\'.__FUNCTION__.' GuzzleHttp：' .$proxy->getStatusCode();
-            }
-        }  catch (ValidateException $e) {
-            return __CLASS__.'\\'.__FUNCTION__.' 验证异常捕获：' .$e->getError();
-        } catch (\Exception $e) {
-            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
+            $this->GQuestions->cache([
+                'sid' => Skip::en('groups_questions',$timers->id),
+                'gid' => $timers->gid,
+                'handle'    =>  [
+                    'event' =>  'set',
+                ],
+                'data'  =>  [
+                    'page_html' =>  's4 清空本字段中的内容...'
+                ]
+            ]);
+
+            return __CLASS__.'\\'.__FUNCTION__.' model(stackoverflow) id = '.$timers->id.' groups('.$cache['gid_data']['name'].') 二级评论处理完毕 '.date('H:i:s');
         }
 
-        $this->s4_pid = 100;
+        $comments = $cache['comment_data'][$commentsKey];
+
         // 一级评论id
-        $this->s4_comments_id = '68068523';
+        $this->s4_comments_id = $comments['id'];
 
         $comment = 
-        QueryList::html($html)
+        QueryList::html($cache['page_html'])
         ->rules([
             'user'  =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment .d-inline-flex a','href','',function($user){
                 preg_match_all('/\/users\/(\d+)\/.*?/',$user,$matches);
@@ -374,26 +513,60 @@ class Stackoverflow{
                 ];
             }],
             'id'    =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment','data-comment-id','',function($id){
-                return $id;
+                return (int)$id;
             }],
             'pid'   =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment','data-comment-id','',function($pid){
-                return $this->s4_pid;
+                return $this->s4_comments_id;
             }],
-            'comment'   =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment .comment-copy','html','',function($comment){
-                return $this->markdown->html($comment);
+            // 判断是否采纳
+            'votecell' =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment','data-comment-id','',function($votecell){
+                return false;
+            }],
+            // 是否翻译 1 = 是 | 0 = 没翻译
+            'translate'   =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment','data-comment-id','',function($translate){
+                return 0;
+            }],
+            // 是否收集了二级评论 1 = 是 | 0 = 没有
+            'secondary-comments'   =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment','data-comment-id','',function($translate){
+                return 1;
+            }],
+            'content'   =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment .comment-copy','html','',function($content){
+                return $this->markdown->html($content,[
+                    'tags' => [
+                        // 是否去除 HTML 标签
+                        'strip_tags' => true
+                    ],
+                    'table' =>  [
+                        // div table 转 Markdown tables
+                        'converter' =>  true
+                    ]
+                ]);
             }]
         ])
         ->query()
         ->getData()
         ->all();
 
-        return $comment;
-    }
-    /** 
-     ** 收集短评数据
-     */
-    public function s5(){
+        /** 
+         ** 没有子评论
+         *? @date 22/10/08 16:04
+         */
+        $cache['comment_data'][$commentsKey]['secondary-comments'] = 1;
+        if (!empty($comment)) {
+            $cache['comment_data'] = array_merge($cache['comment_data'],$comment);
+        }
 
+        $cache = $this->GQuestions->cache([
+            'sid' => Skip::en('groups_questions',$timers->id),
+            'gid' => $timers->gid,
+            'handle'    =>  [
+                'event' =>  'set'
+            ],
+            'data'  =>  [
+                'comment_data'  =>  $cache['comment_data']
+            ]
+        ]);
+
+        return __CLASS__.'\\'.__FUNCTION__.' model(stackoverflow) id = '.$timers->id.' groups('.$cache['gid_data']['name'].') 正在处理二级评论 '.date('H:i:s');
     }
-    
 }
