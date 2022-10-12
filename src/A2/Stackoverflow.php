@@ -322,6 +322,12 @@ class Stackoverflow{
         ->rules([
             'user'  =>  ['#answers .answer .post-layout .answercell .user-info [itemprop=author] >a','href','',function($user){
                 preg_match_all('/\/users\/(\d+)\/.*?/',$user,$matches);
+                if (empty($matches[1][0])) {
+                    return [
+                        'my'    =>  $user,
+                        'id'    =>  0
+                    ];
+                }
                 return [
                     'my'    =>  $user,
                     'id'    =>  $matches[1][0]
