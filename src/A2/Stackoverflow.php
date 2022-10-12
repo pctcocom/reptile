@@ -332,6 +332,7 @@ class Stackoverflow{
                     'my'    =>  $user,
                     'id'    =>  $matches[1][0]
                 ];
+                
             }],
             // 评论id
             'id' =>  ['#answers .answer','data-answerid','',function($id){
@@ -381,6 +382,12 @@ class Stackoverflow{
         ->rules([
             'user'  =>  ['#comments-'.$this->s3_post_id.' .comments-list .comment .comment-user','href','',function($user){
                 preg_match_all('/\/users\/(\d+)\/.*?/',$user,$matches);
+                if (empty($matches[1][0])) {
+                    return [
+                        'my'    =>  $user,
+                        'id'    =>  0
+                    ];
+                }
                 return [
                     'my'    =>  $user,
                     'id'    =>  $matches[1][0]
@@ -513,6 +520,12 @@ class Stackoverflow{
         ->rules([
             'user'  =>  ['#answers .answer .post-layout .post-layout--right #comments-'.$this->s4_comments_id.' .comments-list .comment .d-inline-flex a','href','',function($user){
                 preg_match_all('/\/users\/(\d+)\/.*?/',$user,$matches);
+                if (empty($matches[1][0])) {
+                    return [
+                        'my'    =>  $user,
+                        'id'    =>  0
+                    ];
+                }
                 return [
                     'my'    =>  $user,
                     'id'    =>  $matches[1][0]
