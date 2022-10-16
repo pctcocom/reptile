@@ -187,6 +187,13 @@ class Stackoverflow{
                     'utime' =>  time()
                 ]);
             }
+            $this->GQuestions->cache([
+                'sid' => Skip::en('groups_questions',$timers->id),
+                'gid' => $timers->gid,
+                'handle'    =>  [
+                    'event' =>  'set'
+                ]
+            ]);
             return __CLASS__.'\\'.__FUNCTION__.' 异常捕获（'.$e->getCode().'）：' .$e->getMessage();
         }
 
@@ -303,7 +310,15 @@ class Stackoverflow{
                     'utime' =>  time()
                 ]);
             }
-            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获：' .$e->getMessage();
+
+            $this->GQuestions->cache([
+                'sid' => Skip::en('groups_questions',$timers->id),
+                'gid' => $timers->gid,
+                'handle'    =>  [
+                    'event' =>  'set'
+                ]
+            ]);
+            return __CLASS__.'\\'.__FUNCTION__.' 异常捕获（'.$e->getCode().'）：' .$e->getMessage();
         }
 
         /** 
