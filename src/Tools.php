@@ -4,6 +4,7 @@ use Pctco\Info\HttpProxy;
 use Pctco\Types\Arrays;
 use Pctco\File\Markdown;
 use QL\QueryList;
+use QL\Ext\Chrome;
 use Spatie\Browsershot\Browsershot;
 class Tools{
    function __construct(){
@@ -241,20 +242,26 @@ class Tools{
          'event'  => 'markdown-loader-url',
          'request_url'  => ''
       ],$options);
+
+      $this->MarkdownLoaderOptions = $options;
+      
       if ($options['event'] === 'markdown-loader-url') {
 
-         try {
-            $html = 
-            Browsershot::url('https://markdown-loader-url.netlify.app/?url='.$options['request_url'])
-            ->setDelay(2000)
-            ->bodyHtml();
-         } catch (ValidateException $e) {
-            return false;
-         } catch (\Exception $e) {
-            return false;
-         }
-
-         $content = QueryList::html($html)->find('#readability-page-1>div')->html();
+         $ql = QueryList::getInstance();
+         // 注册插件，默认注册的方法名为: chrome
+         $ql->use(Chrome::class);
+         
+         $content = $ql->chrome(function ($page,$browser) {
+            $page->goto('https://markdown-loader-url.netlify.app/?url='.$this->MarkdownLoaderOptions['request_url']);
+            // 等待h1元素出现
+            $page->waitFor('#readability-page-1');
+            // 获取页面HTML内容
+            $html = $page->content();
+            // 关闭浏览器
+            $browser->close();
+            // 返回值一定要是页面的HTML内容
+            return $html;
+         })->find('#readability-page-1>div')->html();
 
          $content = $this->markdown->html($content,[
             'tags' => [
