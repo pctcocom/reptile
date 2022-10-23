@@ -449,6 +449,7 @@ class Stackoverflow{
         $status = 7;
         
         foreach ($comment as $k => $c) {
+            if (isset($c['votecell']) === false) continue;
             if ($c['votecell'] === true) {
                 $page_html = $html;
                 $status = 6;

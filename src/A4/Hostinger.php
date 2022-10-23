@@ -287,16 +287,16 @@ class Hostinger{
 
         $data[0]['kw'] = implode(',',$keywords);
 
-        $markdown_content = $this->markdown->html($data[0]['content'],[
-            'tags' => [
-                // 是否去除 HTML 标签
-                'strip_tags' => true
-            ],
-            'table' =>  [
-                // div table 转 Markdown tables
-                'converter' =>  true
-            ]
+        $markdown_content = $this->tools->MarkdownLoader([
+            'event'  => 'markdown-loader-url',
+            'request_url'  => $request_url
         ]);
+        if ($markdown_content === false) {
+            $this->model->where('id',$id)->update([
+                'status'    =>  4
+            ]);
+            return __CLASS__.'\\'.__FUNCTION__.' 异常链接： markdown-loader-url '.date('H:i:s');
+        }
 
         $this->model->where('id',$id)->update([
             'title' =>  $data[0]['title'],
