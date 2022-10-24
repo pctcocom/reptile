@@ -288,14 +288,14 @@ class Hostinger{
         $data[0]['kw'] = implode(',',$keywords);
 
         $markdown_content = $this->tools->MarkdownLoader([
-            'event'  => 'markdown-loader-url',
-            'request_url'  => $request_url
+            'event'  => 'html-content',
+            'request'  => isset($data[0]['content'])?$data[0]['content']:false
         ]);
         if ($markdown_content === false) {
             $this->model->where('id',$id)->update([
                 'status'    =>  4
             ]);
-            return __CLASS__.'\\'.__FUNCTION__.' 异常链接： markdown-loader-url '.date('H:i:s');
+            return __CLASS__.'\\'.__FUNCTION__.' 异常链接： html-content '.date('H:i:s');
         }
 
         $this->model->where('id',$id)->update([

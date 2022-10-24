@@ -237,31 +237,44 @@ class Tools{
     ** markdown loader  主要为了处理code pre 中有搞了代码
     *? @date 22/10/23 18:21
     */
+   /** 
+    ** 
+    *? @date 22/10/24 22:10
+    *  @param $event 事件类型
+    *  @param $request 请求
+    *             $event = markdown-loader-url 时 则是url地址
+    *             $event = html-content 时 html 内容
+    *! @return String
+    */
    public function MarkdownLoader($options){
       $options = Arrays::merge([],[
          'event'  => 'markdown-loader-url',
-         'request_url'  => ''
+         'request'  => ''
       ],$options);
 
       $this->MarkdownLoaderOptions = $options;
       
-      if ($options['event'] === 'markdown-loader-url') {
-
-         $ql = QueryList::getInstance();
-         // 注册插件，默认注册的方法名为: chrome
-         $ql->use(Chrome::class);
+      if ($options['event'] === 'html-content') {
+         if (empty($options['request'])) return false;
          
-         $content = $ql->chrome(function ($page,$browser) {
-            $page->goto('https://markdown-loader-url.netlify.app/?url='.$this->MarkdownLoaderOptions['request_url']);
-            // 等待h1元素出现
-            $page->waitFor('#readability-page-1');
-            // 获取页面HTML内容
-            $html = $page->content();
-            // 关闭浏览器
-            $browser->close();
-            // 返回值一定要是页面的HTML内容
-            return $html;
-         })->find('#readability-page-1>div')->html();
+         $content = $this->markdown->html($options['request'],[
+            'tags' => [
+                'strip_tags' => true
+            ],
+            'table' =>  [
+                'converter' =>  true
+            ]
+         ]);
+         return $content;
+      }
+
+      /** 
+       ** markdown-loader-url
+       *? @date 22/10/24 22:09
+       */
+      if ($options['event'] === 'markdown-loader-url') {
+         // 等待完善
+         $content = 'https://markdown-loader-url.netlify.app/?url='.$this->MarkdownLoaderOptions['request'];
 
          $content = $this->markdown->html($content,[
             'tags' => [
